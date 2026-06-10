@@ -166,48 +166,56 @@ node -e "
   const sqrtPriceX96 = BigInt('<SQRT_PRICE_X96>');
   const tickLower = <TICK_LOWER>;
   const tickUpper = <TICK_UPPER>;
-  const Q96 = 2n ** 96n;
 
-  // sqrt prices for tick bounds
-  const sqrtPa = Math.sqrt(1.0001 ** tickLower);
-  const sqrtPb = Math.sqrt(1.0001 ** tickUpper);
-  const sqrtP  = Number(sqrtPriceX96) / Number(Q96);
+  // Work in human-scale prices (USDC per WPROS) to avoid float cancellation
+  // at the large negative ticks typical of this pool (~-282000).
+  // Raw sqrtP ≈ 7.6e-7; squaring it gives ~5.8e-13, causing catastrophic
+  // cancellation in (sqrtPb - sqrtP) → never use raw sqrtP in L formula.
+  const sqrtRatio  = Number(sqrtPriceX96) / 2 ** 96;
+  const priceHuman = sqrtRatio * sqrtRatio * 1e12; // USDC per WPROS
+
+  const priceAtLower = (1.0001 ** tickLower) * 1e12;
+  const priceAtUpper = (1.0001 ** tickUpper) * 1e12;
+
+  const sqrtPh  = Math.sqrt(priceHuman);
+  const sqrtPah = Math.sqrt(priceAtLower);
+  const sqrtPbh = Math.sqrt(priceAtUpper);
 
   let amount0Wei, amount1Wei;
 
-  if (sqrtP <= sqrtPa) {
+  if (priceHuman <= priceAtLower) {
     // Price below range: deposit only token0 (WPROS)
-    const wpros = <USER_WPROS_AMOUNT>;  // human
+    const wpros = <USER_WPROS_AMOUNT>;
     amount0Wei = BigInt(Math.round(wpros * 1e18)).toString();
     amount1Wei = '0';
     console.log('Price below range — deposit WPROS only');
-  } else if (sqrtP >= sqrtPb) {
+  } else if (priceHuman >= priceAtUpper) {
     // Price above range: deposit only token1 (USDC)
-    const usdc = <USER_USDC_AMOUNT>;    // human
+    const usdc = <USER_USDC_AMOUNT>;
     amount0Wei = '0';
     amount1Wei = BigInt(Math.round(usdc * 1e6)).toString();
     console.log('Price above range — deposit USDC only');
   } else {
-    // Price inside range: both tokens, compute ratio from one
+    // Price inside range: compute both amounts from one input
     const wpros = <USER_WPROS_AMOUNT>;  // set to 0 if user specified USDC
     if (wpros > 0) {
-      const L = (wpros * sqrtP * sqrtPb) / (sqrtPb - sqrtP);
-      const usdc = L * (sqrtP - sqrtPa);
+      const L    = wpros * sqrtPh * sqrtPbh / (sqrtPbh - sqrtPh);
+      const usdc = L * (sqrtPh - sqrtPah);
       amount0Wei = BigInt(Math.round(wpros * 1e18)).toString();
       amount1Wei = BigInt(Math.round(usdc * 1e6)).toString();
     } else {
-      const usdc = <USER_USDC_AMOUNT>;
-      const L = usdc / (sqrtP - sqrtPa);
-      const wpros2 = L * (sqrtPb - sqrtP) / (sqrtP * sqrtPb);
-      amount0Wei = BigInt(Math.round(wpros2 * 1e18)).toString();
-      amount1Wei = BigInt(Math.round(usdc * 1e6)).toString();
+      const usdc  = <USER_USDC_AMOUNT>;
+      const L     = usdc / (sqrtPh - sqrtPah);
+      const wpros2 = L * (sqrtPbh - sqrtPh) / (sqrtPh * sqrtPbh);
+      amount0Wei  = BigInt(Math.round(wpros2 * 1e18)).toString();
+      amount1Wei  = BigInt(Math.round(usdc * 1e6)).toString();
     }
   }
   console.log('amount0Desired (WPROS wei):', amount0Wei);
   console.log('amount1Desired (USDC raw) :', amount1Wei);
   // Apply 1% slippage for minimums
-  console.log('amount0Min:', BigInt(Math.round(Number(amount0Wei) * 0.99)).toString());
-  console.log('amount1Min:', BigInt(Math.round(Number(amount1Wei) * 0.99)).toString());
+  console.log('amount0Min:', (BigInt(amount0Wei) * 99n / 100n).toString());
+  console.log('amount1Min:', (BigInt(amount1Wei) * 99n / 100n).toString());
 "
 ```
 

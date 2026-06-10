@@ -101,17 +101,7 @@ Proceed?
 
 ### Step 4 — ERC20 Approval (skip entirely if fromToken is PROS native)
 
-Check current allowance to the Diamond:
-
-```bash
-cast call 0xFf70F4A1d11995621854F3692acF286d8aCd04b2 \
-  "allowance(address,address)(uint256)" \
-  <SENDER_ADDRESS> \
-  0xFf70F4A1d11995621854F3692acF286d8aCd04b2 \
-  --rpc-url https://rpc.pharos.xyz
-```
-
-Wait — `allowance` is on the **token**, not the Diamond. Correct command:
+Check current allowance on the **token** contract (not the Diamond):
 
 ```bash
 cast call <FROM_TOKEN_ADDR> \
