@@ -43,7 +43,8 @@ function fetchQuote() {
       res.on('end', () => {
         const q = JSON.parse(d);
         if (!q.transactionRequest) {
-          reject(new Error('LI.FI error: ' + JSON.stringify(q).slice(0, 200)));
+          const detail = q.message || q.code || JSON.stringify(q).slice(0, 120);
+          reject(new Error('No route found for this pair/amount - try a different amount (' + detail + ')'));
         } else {
           resolve(q);
         }
