@@ -1,0 +1,18 @@
+# Private keys and secrets — never commit
+.env
+
+# Generated artifacts
+getfee_*.json
+lp_plan.json
+*.log
+
+# Dependencies
+node_modules/
+
+# Build / OS
+dist/
+.DS_Store
+Thumbs.db
+
+# Zip of official engine (not our work)
+pharos-skill-engine-0.1.0.zip
